@@ -91,13 +91,13 @@ func (this *SimulationHandler) Post(w http.ResponseWriter, req *http.Request, ne
 		return
 	}
 
-	this.Get(w, req, next)
+	handlers.WriteResponse(w, []byte(""))
 }
 
 func (this *SimulationHandler) Delete(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
 	this.Hoverfly.DeleteSimulation()
 
-	this.Get(w, req, next)
+	handlers.WriteResponse(w, []byte(""))
 }
 
 func (this *SimulationHandler) Options(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
