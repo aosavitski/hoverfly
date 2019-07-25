@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"io/ioutil"
 	"net/http"
 
 	"github.com/SpectoLabs/hoverfly/core/handlers/v2"
@@ -94,12 +93,9 @@ func (hf *Hoverfly) ImportFromDisk(path string) error {
 
 	var simulation v2.SimulationViewV5
 
-	body, err := ioutil.ReadAll(pairsFile)
-	if err != nil {
-		return fmt.Errorf("Got error while parsing payloads, error %s", err.Error())
-	}
-
-	err = json.Unmarshal(body, &simulation)
+	log.Info("Start decoding file to simulation")
+	err = json.NewDecoder(pairsFile).Decode(&simulation)
+	log.Info("Finish decoding")
 	if err != nil {
 		return fmt.Errorf("Got error while parsing payloads, error %s", err.Error())
 	}
@@ -119,12 +115,9 @@ func (hf *Hoverfly) ImportFromURL(url string) error {
 
 	var simulation v2.SimulationViewV5
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("Got error while parsing payloads, error %s", err.Error())
-	}
-
-	err = json.Unmarshal(body, &simulation)
+	log.Info("Start decoding body to simulation")
+	err = json.NewDecoder(resp.Body).Decode(&simulation)
+	log.Info("Finish decoding")
 	if err != nil {
 		return fmt.Errorf("Got error while parsing payloads, error %s", err.Error())
 	}

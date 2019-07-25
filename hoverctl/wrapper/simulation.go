@@ -48,6 +48,29 @@ func ExportSimulation(target configuration.Target, urlPattern string) ([]byte, e
 	return jsonBytes.Bytes(), nil
 }
 
+func StoreSimulation(target configuration.Target, fileName string) (string, error) {
+
+	requestUrl := v2ApiSimulationStore
+	if len(fileName) > 0 {
+		requestUrl = fmt.Sprintf("%s?fileName=%s", requestUrl, url.QueryEscape(fileName))
+	} else {
+		requestUrl = fmt.Sprintf("%s?fileName=%s", requestUrl, url.QueryEscape("simulation.json"))
+	}
+	response, err := doRequest(target, "GET", requestUrl, "", nil)
+	if err != nil {
+		return "", err
+	}
+
+	defer response.Body.Close()
+
+	err = handleResponseError(response, "Could not store simulation")
+	if err != nil {
+		return "", err
+	}
+
+	return "ok", nil
+}
+
 func ImportSimulation(target configuration.Target, simulationData string) error {
 	response, err := doRequest(target, "PUT", v2ApiSimulation, simulationData, nil)
 	if err != nil {

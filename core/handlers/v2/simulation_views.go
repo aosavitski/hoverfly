@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"net/http"
 
 	"strings"
 
@@ -13,10 +14,10 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-func NewSimulationViewFromRequestBody(responseBody []byte) (SimulationViewV5, error) {
+func NewSimulationViewFromRequestBody(req *http.Request) (SimulationViewV5, error) {
 	var simulationView SimulationViewV5
 
-	jsonMap := make(map[string]interface{})
+	/*jsonMap := make(map[string]interface{})
 
 	if err := json.Unmarshal(responseBody, &jsonMap); err != nil {
 		return SimulationViewV5{}, errors.New("Invalid JSON")
@@ -30,19 +31,25 @@ func NewSimulationViewFromRequestBody(responseBody []byte) (SimulationViewV5, er
 		return SimulationViewV5{}, errors.New("Invalid JSON, missing \"meta.schemaVersion\" string")
 	}
 
-	schemaVersion := jsonMap["meta"].(map[string]interface{})["schemaVersion"].(string)
+	schemaVersion := jsonMap["meta"].(map[string]interface{})["schemaVersion"].(string)*/
+	schemaVersion := "v5"
 
 	if schemaVersion == "v5" {
-		err := ValidateSimulation(jsonMap, SimulationViewV5Schema)
+		/*err := ValidateSimulation(jsonMap, SimulationViewV5Schema)
 		if err != nil {
 			return simulationView, errors.New(fmt.Sprintf("Invalid %s simulation: ", schemaVersion) + err.Error())
-		}
+		}*/
 
-		err = json.Unmarshal(responseBody, &simulationView)
+		//err = json.Unmarshal(responseBody, &simulationView)
+		log.Info("Start decoding file to simulation")
+		err := json.NewDecoder(req.Body).Decode(&simulationView)
+		log.Info("Finsih decoding file to simulationView")
 		if err != nil {
 			return SimulationViewV5{}, err
 		}
-	} else if schemaVersion == "v4" || schemaVersion == "v3" {
+	} else {
+		return simulationView, fmt.Errorf("Invalid simulation: schema version %v is not supported by this version of Hoverfly, you may need to update Hoverfly", schemaVersion)
+	}/* else if schemaVersion == "v4" || schemaVersion == "v3" {
 		err := ValidateSimulation(jsonMap, SimulationViewV4Schema)
 		if err != nil {
 			return simulationView, errors.New(fmt.Sprintf("Invalid %s simulation: ", schemaVersion) + err.Error())
@@ -84,9 +91,7 @@ func NewSimulationViewFromRequestBody(responseBody []byte) (SimulationViewV5, er
 		}
 
 		simulationView = upgradeV1(simulationViewV1)
-	} else {
-		return simulationView, fmt.Errorf("Invalid simulation: schema version %v is not supported by this version of Hoverfly, you may need to update Hoverfly", schemaVersion)
-	}
+	}*/ 
 
 	simulationView.MetaView.SchemaVersion = "v3"
 	return simulationView, nil

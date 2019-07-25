@@ -1,6 +1,7 @@
 package v2
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -54,6 +55,14 @@ func (this *SimulationHandler) RegisterRoutes(mux *bone.Mux, am *handlers.AuthHa
 	mux.Options("/api/v2/simulation/schema", negroni.New(
 		negroni.HandlerFunc(this.Options),
 	))
+	
+	mux.Get("/api/v2/simulation/store", negroni.New(
+		negroni.HandlerFunc(am.RequireTokenAuthentication),
+		negroni.HandlerFunc(this.StoreSimulation),
+	))
+	mux.Options("/api/v2/simulation/store", negroni.New(
+		negroni.HandlerFunc(this.Options),
+	))
 }
 
 func (this *SimulationHandler) Get(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
@@ -74,6 +83,44 @@ func (this *SimulationHandler) Get(w http.ResponseWriter, req *http.Request, nex
 	bytes, _ := util.JSONMarshal(simulationView)
 
 	handlers.WriteResponse(w, bytes)
+}
+
+func (this *SimulationHandler) StoreSimulation(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
+	fileName := req.URL.Query().Get("fileName")
+	if fileName == "" {
+		fileName = "simulation.json"
+	}
+	log.Info("Request to store simulation to the file ", fileName)
+	
+	var err error
+	var simulationView SimulationViewV5
+	simulationView, err = this.Hoverfly.GetSimulation()
+	if err != nil {
+		handlers.WriteErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	simulationJson, err := JSONMarshal(simulationView, false)
+	if err != nil {
+		handlers.WriteErrorResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	 
+	ioutil.WriteFile("/tmp/" + fileName, simulationJson, 0644)
+	log.Info("Simulation stored to the file ", "/tmp/" + fileName)
+
+	handlers.WriteResponse(w, []byte("ok"))
+}
+
+func JSONMarshal(t interface{}, isPretty bool) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	if isPretty {
+		encoder.SetIndent("", "    ")
+	}
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	return buffer.Bytes(), err
 }
 
 func (this *SimulationHandler) Put(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
@@ -116,9 +163,9 @@ func (this *SimulationHandler) OptionsSchema(w http.ResponseWriter, r *http.Requ
 }
 
 func (this *SimulationHandler) addSimulation(w http.ResponseWriter, req *http.Request, overrideExisting bool) error {
-	body, _ := ioutil.ReadAll(req.Body)
+	//body, _ := ioutil.ReadAll(req.Body)
 
-	simulationView, err := NewSimulationViewFromRequestBody(body)
+	simulationView, err := NewSimulationViewFromRequestBody(req)
 	if err != nil {
 		handlers.WriteErrorResponse(w, err.Error(), http.StatusBadRequest)
 		return err
@@ -130,6 +177,7 @@ func (this *SimulationHandler) addSimulation(w http.ResponseWriter, req *http.Re
 
 	result := this.Hoverfly.PutSimulation(simulationView)
 	if result.err != nil {
+		body, _ := ioutil.ReadAll(req.Body)
 
 		log.WithFields(log.Fields{
 			"body": string(body),
